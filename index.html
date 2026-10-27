@@ -1,0 +1,2028 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>몰입 덧셈 놀이터 - Flow Math Playground</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Jua & Gowun Dodum for friendly Korean kids typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-from: #eef2ff;
+      --bg-to: #fdf4ff;
+      --accent-main: #6366f1;
+      --accent-dark: #4338ca;
+      --accent-soft: #e0e7ff;
+      --card-border: #c7d2fe;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Gowun Dodum', sans-serif;
+      background: linear-gradient(135deg, var(--bg-from), var(--bg-to));
+      min-height: 100vh;
+      overflow-x: hidden;
+      transition: background 0.5s ease;
+    }
+
+    h1, h2, h3, .font-title {
+      font-family: 'Jua', sans-serif;
+      letter-spacing: 0.02em;
+    }
+
+    /* Custom 3D Tactile Kid-Friendly Buttons */
+    .btn-3d {
+      transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s ease, background-color 0.2s ease;
+    }
+    .btn-3d:active:not(:disabled) {
+      transform: translateY(4px) scale(0.98);
+    }
+
+    /* Ten-Frame Grid & Cell Animations */
+    .ten-frame-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+      gap: 0.375rem;
+    }
+
+    .ten-cell {
+      aspect-ratio: 1 / 1;
+      transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+    }
+
+    .ten-cell-item {
+      animation: popIn 0.38s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    .ten-cell-moved {
+      animation: hopIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    .ten-cell-ghost {
+      opacity: 0.25;
+      transform: scale(0.82);
+      filter: grayscale(35%);
+    }
+
+    .empty-slot-pulse {
+      animation: slotPulse 1.6s infinite ease-in-out;
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.2) rotate(-12deg); opacity: 0; }
+      70% { transform: scale(1.12) rotate(4deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+
+    @keyframes hopIn {
+      0% { transform: translateY(28px) scale(0.5); opacity: 0.2; }
+      60% { transform: translateY(-10px) scale(1.18); opacity: 1; }
+      100% { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    @keyframes slotPulse {
+      0%, 100% { transform: scale(1); border-color: #fbbf24; background-color: rgba(254, 243, 199, 0.45); }
+      50% { transform: scale(1.06); border-color: #f59e0b; background-color: rgba(253, 230, 138, 0.8); }
+    }
+
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+    }
+
+    .animate-float {
+      animation: floatSlow 3s ease-in-out infinite;
+    }
+
+    @keyframes chestShake {
+      0%, 100% { transform: rotate(0deg) scale(1); }
+      25% { transform: rotate(-10deg) scale(1.1); }
+      50% { transform: rotate(10deg) scale(1.15); }
+      75% { transform: rotate(-6deg) scale(1.1); }
+    }
+
+    .chest-ready {
+      animation: chestShake 0.8s ease-in-out infinite;
+    }
+
+    /* Custom Scrollbar for Modals */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.04);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(99, 102, 241, 0.35);
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="text-slate-800 pb-10">
+
+  <!-- Confetti Canvas Overlay -->
+  <canvas id="confettiCanvas" class="fixed inset-0 pointer-events-none z-50 w-full h-full"></canvas>
+
+  <!-- Main Container -->
+  <div class="max-w-4xl mx-auto px-3 sm:px-6 pt-3 sm:pt-5">
+
+    <!-- Top Navigation & Status Header -->
+    <header class="bg-white/90 backdrop-blur-md rounded-3xl p-3 sm:p-4 shadow-md border-2 border-white flex flex-wrap items-center justify-between gap-2 mb-4">
+      <!-- Brand & Home Trigger -->
+      <div class="flex items-center gap-2.5">
+        <button id="btnLogoHome" onclick="app.showScreen('lobby')" title="자율 선택 홈으로 이동"
+          class="btn-3d flex items-center gap-2 bg-gradient-to-tr from-indigo-500 to-purple-500 text-white px-3.5 py-2 rounded-2xl shadow-[0_4px_0_#4338ca] font-title text-lg sm:text-xl">
+          <span id="headerThemeIcon" class="text-2xl">🚀</span>
+          <span>몰입 덧셈 놀이터</span>
+        </button>
+
+        <!-- Flow Balance Badge (Condition 2: Goldilocks Status) -->
+        <div id="flowStatusBadge" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-bold">
+          <span id="flowBadgeEmoji">🌊</span>
+          <span id="flowBadgeText">황금 몰입 구간</span>
+        </div>
+      </div>
+
+      <!-- Right Action Buttons: Growth Book, Sound Toggle, Quick Settings -->
+      <div class="flex items-center gap-2">
+        <!-- Quick Solved Counter -->
+        <div class="flex items-center gap-1.5 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-2xl text-amber-900 font-bold text-sm">
+          <span>🌟</span>
+          <span id="headerTotalSolved">0</span>
+          <span class="hidden md:inline text-xs font-normal text-amber-700">문제 해결</span>
+        </div>
+
+        <!-- Growth & Sticker Book Modal Button (Condition 5) -->
+        <button onclick="app.openGrowthModal()"
+          class="btn-3d flex items-center gap-1.5 bg-amber-400 hover:bg-amber-300 text-slate-900 font-title px-3.5 py-2 rounded-2xl shadow-[0_4px_0_#d97706] text-sm sm:text-base">
+          <span>📖</span>
+          <span>도감·기록장</span>
+          <span id="newStickerDot" class="hidden w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+        </button>
+
+        <!-- Audio Mute Toggle (Condition 3) -->
+        <button id="btnSoundToggle" onclick="app.toggleSound()"
+          class="btn-3d bg-slate-100 hover:bg-slate-200 text-slate-700 w-10 h-10 rounded-2xl shadow-[0_4px_0_#cbd5e1] flex items-center justify-center text-lg"
+          aria-label="소리 켜기/끄기">
+          🔊
+        </button>
+      </div>
+    </header>
+
+    <!-- ==========================================
+         SCREEN 1: AUTONOMY LOBBY (자율 선택 시작 화면)
+         Condition 1: Autonomy & Self-Determination
+         ========================================== -->
+    <section id="screenLobby" class="space-y-4">
+      <!-- Hero Welcome Banner -->
+      <div class="bg-white/95 rounded-3xl p-5 sm:p-6 shadow-lg border-2 border-indigo-100 relative overflow-hidden">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="space-y-2 text-center sm:text-left">
+            <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold">
+              <span>✨ 내가 스스로 정하는 오늘의 놀이터</span>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-title text-slate-800">
+              어떤 테마와 목표로 덧셈 탐험을 떠날까요?
+            </h1>
+            <p class="text-sm sm:text-base text-slate-600">
+              아이콘, 목표 문제 수, 진행 속도를 <strong>내가 원하는 대로</strong> 골라 보세요! 언제든 바꿀 수 있어요.
+            </p>
+          </div>
+          <div class="flex flex-col items-center bg-gradient-to-b from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-3.5 min-w-[165px]">
+            <span class="text-xs font-bold text-amber-800">나의 누적 성취</span>
+            <div class="text-2xl font-title text-amber-600 mt-0.5"><span id="lobbySolvedCount">0</span>문제 성공</div>
+            <div class="text-xs text-slate-600 mt-1">모은 스티커: <strong id="lobbyStickerCount" class="text-indigo-600">0/16</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 1: Choose Theme & Manipulative Icons -->
+      <div class="bg-white/95 rounded-3xl p-5 shadow-md border-2 border-white">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg sm:text-xl font-title text-slate-800 flex items-center gap-2">
+            <span class="w-7 h-7 rounded-full bg-indigo-600 text-white inline-flex items-center justify-center text-sm">1</span>
+            <span>내가 좋아하는 테마와 수 세기 블록 고르기</span>
+          </h2>
+          <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">즉시 배경·교구 변경</span>
+        </div>
+        <div id="themeSelectorGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <!-- Dynamically populated by JS -->
+        </div>
+      </div>
+
+      <!-- Step 2 & Step 3: Goal Amount & Pacing Mode -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Step 2: Daily Goal -->
+        <div class="bg-white/95 rounded-3xl p-5 shadow-md border-2 border-white flex flex-col justify-between">
+          <div>
+            <h2 class="text-lg sm:text-xl font-title text-slate-800 flex items-center gap-2 mb-3">
+              <span class="w-7 h-7 rounded-full bg-indigo-600 text-white inline-flex items-center justify-center text-sm">2</span>
+              <span>오늘의 목표 문제 수 정하기</span>
+            </h2>
+            <div id="goalSelectorGrid" class="grid grid-cols-3 gap-2.5">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+          <p class="text-xs text-slate-500 mt-3">
+            💡 3문제를 풀 때마다 <strong>미니 보물상자🎁</strong>가 열리고 캐릭터 스티커를 받아요!
+          </p>
+        </div>
+
+        <!-- Step 3: Pacing Mode (Relaxed vs Speed Bonus) -->
+        <div class="bg-white/95 rounded-3xl p-5 shadow-md border-2 border-white flex flex-col justify-between">
+          <div>
+            <h2 class="text-lg sm:text-xl font-title text-slate-800 flex items-center gap-2 mb-3">
+              <span class="w-7 h-7 rounded-full bg-indigo-600 text-white inline-flex items-center justify-center text-sm">3</span>
+              <span>나의 진행 방식 고르기</span>
+            </h2>
+            <div id="modeSelectorGrid" class="grid grid-cols-2 gap-2.5">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+          <p class="text-xs text-slate-500 mt-3">
+            💡 스피드 챌린지에서도 시간이 지났다고 실패하지 않아요! 빠르게 풀면 <strong>보너스 별🌟</strong>을 더 받습니다.
+          </p>
+        </div>
+      </div>
+
+      <!-- Step 4: Goldilocks Difficulty Level & Auto-Flow Balancer -->
+      <div class="bg-white/95 rounded-3xl p-5 shadow-md border-2 border-white">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h2 class="text-lg sm:text-xl font-title text-slate-800 flex items-center gap-2">
+            <span class="w-7 h-7 rounded-full bg-indigo-600 text-white inline-flex items-center justify-center text-sm">4</span>
+            <span>출발 단계 선택 & 자동 몰입 밸런서</span>
+          </h2>
+
+          <!-- Auto-Flow Toggle Switch -->
+          <label class="inline-flex items-center gap-2 cursor-pointer bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-2xl">
+            <input type="checkbox" id="chkAutoFlowLobby" checked onchange="app.toggleAutoFlow(this.checked)" class="sr-only peer">
+            <div class="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all relative peer-checked:bg-emerald-500"></div>
+            <span class="text-xs sm:text-sm font-bold text-emerald-900">🤖 자동 몰입 밸런서 (Auto-Flow) 켜기</span>
+          </label>
+        </div>
+
+        <div id="levelSelectorGrid" class="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
+          <!-- Populated by JS -->
+        </div>
+        <p class="text-xs text-slate-500 mt-3">
+          ⚖️ <strong>골디락스 법칙:</strong> 자동 몰입 밸런서를 켜 두면, 연속으로 쉽게 맞힐 때는 살짝 도전적인 문제를, 헷갈릴 때는 부담을 낮춘 문제를 자동으로 조절해 줍니다.
+        </p>
+      </div>
+
+      <!-- Start Adventure CTA -->
+      <div class="pt-1 text-center">
+        <button onclick="app.startGameSession()"
+          class="btn-3d w-full sm:w-auto min-w-[280px] bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 hover:from-indigo-500 hover:to-pink-400 text-white font-title text-2xl px-10 py-4 rounded-3xl shadow-[0_6px_0_#3730a3] inline-flex items-center justify-center gap-3">
+          <span id="startBtnEmoji" class="text-3xl animate-bounce">🚀</span>
+          <span>내가 고른 설정으로 출발하기!</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         SCREEN 2: GAMEPLAY PLAYGROUND (몰입 덧셈 놀이터)
+         Conditions 2, 3, 4 Integrated
+         ========================================== -->
+    <section id="screenGame" class="hidden space-y-3.5">
+
+      <!-- Top Bar: Session Progress, Micro-goal Treasure Chest, Level & Auto-Flow Control -->
+      <div class="bg-white/95 rounded-3xl p-3.5 sm:p-4 shadow-md border-2 border-white flex flex-wrap items-center justify-between gap-3">
+        <!-- Back to Lobby & Current Level Pill -->
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="app.showScreen('lobby')"
+            class="btn-3d bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm px-3 py-2 rounded-xl shadow-[0_3px_0_#cbd5e1] flex items-center gap-1">
+            <span>⚙️</span>
+            <span>설정 바꾸기</span>
+          </button>
+
+          <!-- Level Quick Switcher Dropdown/Pills -->
+          <div class="flex items-center bg-indigo-50 border border-indigo-200 rounded-xl p-1 gap-1">
+            <span class="text-xs font-bold text-indigo-800 px-2" id="gameCurrentLevelLabel">1단계</span>
+            <button onclick="app.changeLevelManual(-1)" title="한 단계 낮추기"
+              class="w-7 h-7 rounded-lg bg-white hover:bg-indigo-100 text-indigo-700 font-bold text-sm shadow-sm">-</button>
+            <button onclick="app.changeLevelManual(1)" title="한 단계 높이기"
+              class="w-7 h-7 rounded-lg bg-white hover:bg-indigo-100 text-indigo-700 font-bold text-sm shadow-sm">+</button>
+          </div>
+
+          <!-- Auto-Flow Active Chip -->
+          <button id="btnInGameAutoFlow" onclick="app.toggleAutoFlow(!app.state.autoFlow)"
+            class="text-xs font-bold px-2.5 py-1.5 rounded-xl border transition-all flex items-center gap-1">
+            <span>🤖 자동밸런스 ON</span>
+          </button>
+        </div>
+
+        <!-- Session Goal & Micro-Goal Treasure Chest (Condition 3) -->
+        <div class="flex items-center gap-3 ml-auto">
+          <!-- Session Goal Progress -->
+          <div class="text-right">
+            <div class="text-xs font-bold text-slate-500" id="sessionGoalTitle">오늘의 목표</div>
+            <div class="font-title text-base sm:text-lg text-indigo-700" id="sessionProgressText">1 / 5 문제</div>
+          </div>
+
+          <!-- 3-Problem Micro-Goal Treasure Box -->
+          <div class="flex items-center gap-2 bg-amber-50 border-2 border-amber-200 px-3 py-1.5 rounded-2xl" title="3문제를 해결할 때마다 보물상자가 열려요!">
+            <div id="microChestIcon" class="text-2xl">🎁</div>
+            <div>
+              <div class="text-[11px] font-bold text-amber-900">보물상자 미션</div>
+              <div id="microGoalDots" class="flex items-center gap-1 mt-0.5">
+                <span class="w-3.5 h-3.5 rounded-full bg-amber-200 border border-amber-400 inline-block"></span>
+                <span class="w-3.5 h-3.5 rounded-full bg-amber-200 border border-amber-400 inline-block"></span>
+                <span class="w-3.5 h-3.5 rounded-full bg-amber-200 border border-amber-400 inline-block"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Optional Speed Challenge Bonus Bar (Non-stressful bonus star meter) -->
+      <div id="speedBonusContainer" class="hidden bg-white/90 rounded-2xl px-4 py-2 shadow-sm border border-amber-200 flex items-center gap-3">
+        <span class="text-xs font-bold text-amber-800 whitespace-nowrap flex items-center gap-1">
+          <span>⚡ 보너스 별 게이지</span>
+        </span>
+        <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-0.5">
+          <div id="speedBonusBar" class="bg-gradient-to-r from-amber-400 to-orange-400 h-full rounded-full transition-all duration-200" style="width: 100%;"></div>
+        </div>
+        <span id="speedBonusStatus" class="text-xs font-bold text-amber-700 whitespace-nowrap">🌟 보너스 가능!</span>
+      </div>
+
+      <!-- Main Problem & Ten-Frame Workspace Card -->
+      <div class="bg-white/95 rounded-3xl p-4 sm:p-6 shadow-xl border-2 border-indigo-100 space-y-5">
+
+        <!-- Level Context & Strategy Badge -->
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <span id="problemCategoryBadge" class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold px-3 py-1 rounded-full bg-indigo-50 text-indigo-700">
+            🌱 1단계 · 합이 5 이하인 덧셈
+          </span>
+
+          <!-- Make-10 Interactive Helper Button (Condition 3) -->
+          <button id="btnMakeTen" onclick="app.animateMakeTen()"
+            class="btn-3d bg-gradient-to-r from-amber-400 to-orange-400 hover:from-amber-300 hover:to-orange-300 text-slate-900 font-title text-sm sm:text-base px-4 py-1.5 rounded-2xl shadow-[0_3px_0_#d97706] flex items-center gap-1.5">
+            <span>✨</span>
+            <span id="btnMakeTenLabel">10 묶어 보기</span>
+          </button>
+        </div>
+
+        <!-- Big Mathematical Equation Display -->
+        <div class="text-center py-2">
+          <div id="equationContainer" class="inline-flex flex-wrap items-center justify-center gap-2 sm:gap-4 px-6 py-4 rounded-3xl bg-slate-50 border-2 border-slate-200 shadow-inner">
+            <!-- Populated dynamically: e.g., 8 + 5 = [ ? ] or 7 + [ ? ] = 10 -->
+          </div>
+          <!-- Dynamic Strategy Transformation Sub-equation (e.g., 8 + 5 ➔ 10 + 3 = 13) -->
+          <div id="equationTransformHint" class="h-7 mt-2 text-sm sm:text-base font-bold text-emerald-700 transition-all opacity-0">
+            ✨ 첫 번째 상자를 10으로 채우면: 10 + 3 = 13
+          </div>
+        </div>
+
+        <!-- ==========================================
+             VISUAL TEN-FRAME MANIPULATIVE (10칸 상자 2개)
+             Condition 3: Immediate Visual & Audio Feedback
+             ========================================== -->
+        <div class="bg-slate-50/90 rounded-3xl p-3.5 sm:p-5 border-2 border-slate-200/80">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div class="text-xs sm:text-sm font-bold text-slate-600 flex items-center gap-1.5">
+              <span>🧮</span>
+              <span><strong>시각적 10프레임 상자</strong> (아이템을 손가락으로 톡톡 눌러 소리 내어 세어 보세요!)</span>
+            </div>
+            <button onclick="app.resetTenFrameGrouping()" id="btnResetTenFrame" class="hidden text-xs font-bold text-indigo-600 hover:underline">
+              ↩️ 원래대로 나누어 보기
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Ten-Frame Box 1 (1 ~ 10) -->
+            <div id="tenFrameBox1Wrapper" class="bg-white rounded-2xl p-3 border-2 border-indigo-200 shadow-sm transition-all">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-indigo-900 bg-indigo-100 px-2.5 py-0.5 rounded-full">첫 번째 10칸 상자</span>
+                <span id="box1CountBadge" class="font-title text-sm text-indigo-700">0개</span>
+              </div>
+              <div id="tenFrameGrid1" class="ten-frame-grid">
+                <!-- 10 cells generated by JS -->
+              </div>
+            </div>
+
+            <!-- Ten-Frame Box 2 (11 ~ 20) -->
+            <div id="tenFrameBox2Wrapper" class="bg-white rounded-2xl p-3 border-2 border-pink-200 shadow-sm transition-all">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-pink-900 bg-pink-100 px-2.5 py-0.5 rounded-full">두 번째 10칸 상자</span>
+                <span id="box2CountBadge" class="font-title text-sm text-pink-700">0개</span>
+              </div>
+              <div id="tenFrameGrid2" class="ten-frame-grid">
+                <!-- 10 cells generated by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             COACH FEEDBACK & PROCESS PRAISE BANNER
+             Condition 4: Safe Failure & Process Praise
+             ========================================== -->
+        <div id="feedbackBanner" class="rounded-2xl p-3.5 sm:p-4 border-2 border-indigo-100 bg-indigo-50/70 flex items-center gap-3.5 transition-all">
+          <div id="feedbackCoachAvatar" class="text-3xl sm:text-4xl shrink-0 animate-float">🚀</div>
+          <div class="flex-1">
+            <div id="feedbackTitle" class="font-title text-base sm:text-lg text-indigo-950">
+              상자 속 블록을 살펴보고 알맞은 숫자 버튼을 눌러 보세요!
+            </div>
+            <div id="feedbackSubtitle" class="text-xs sm:text-sm text-slate-600 mt-0.5">
+              실수해도 괜찮아요! 언제든 힌트를 보고 다시 생각할 수 있어요.
+            </div>
+          </div>
+          <!-- Next Problem Button (appears when solved) -->
+          <button id="btnNextProblem" onclick="app.nextProblem()"
+            class="hidden btn-3d shrink-0 bg-emerald-500 hover:bg-emerald-400 text-white font-title text-base sm:text-lg px-5 py-2.5 rounded-2xl shadow-[0_4px_0_#047857] flex items-center gap-1.5">
+            <span>다음 문제</span>
+            <span>👉</span>
+          </button>
+        </div>
+
+        <!-- Answer Choice Buttons (Large, Touch-Friendly) -->
+        <div>
+          <div id="answerChoicesGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <!-- 4 or 5 choice buttons dynamically generated -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==========================================
+         SCREEN 3: SESSION COMPLETE CELEBRATION
+         ========================================== -->
+    <section id="screenComplete" class="hidden">
+      <div class="bg-white/95 rounded-3xl p-6 sm:p-8 shadow-xl border-2 border-amber-200 text-center space-y-5 max-w-xl mx-auto">
+        <div class="text-6xl animate-bounce" id="completeHeroEmoji">🏆</div>
+        <div class="space-y-1">
+          <span class="px-3 py-1 rounded-full bg-amber-100 text-amber-800 font-bold text-xs">오늘의 약속 달성 완료!</span>
+          <h2 class="text-2xl sm:text-3xl font-title text-slate-800 mt-2" id="completeTitle">
+            내가 스스로 정한 목표를 끝까지 해냈어요!
+          </h2>
+          <p class="text-sm sm:text-base text-slate-600" id="completeMessage">
+            포기하지 않고 그림 블록과 전략을 활용해 덧셈 실력이 한 뼘 더 자랐어요.
+          </p>
+        </div>
+
+        <!-- Session Summary Cards -->
+        <div class="grid grid-cols-3 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+          <div>
+            <div class="text-xs text-slate-500 font-bold">해결한 문제</div>
+            <div class="text-xl sm:text-2xl font-title text-indigo-600 mt-1" id="summarySolved">0문제</div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-500 font-bold">도달한 단계</div>
+            <div class="text-xl sm:text-2xl font-title text-emerald-600 mt-1" id="summaryLevel">1단계</div>
+          </div>
+          <div>
+            <div class="text-xs text-slate-500 font-bold">획득한 스티커</div>
+            <div class="text-xl sm:text-2xl font-title text-amber-600 mt-1" id="summaryStickers">+0개</div>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <button onclick="app.openGrowthModal()"
+            class="btn-3d w-full sm:w-auto bg-amber-400 hover:bg-amber-300 text-slate-900 font-title text-lg px-6 py-3 rounded-2xl shadow-[0_4px_0_#d97706]">
+            📖 나의 덧셈 정복 지도 보기
+          </button>
+          <button onclick="app.startGameSession()"
+            class="btn-3d w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-title text-lg px-6 py-3 rounded-2xl shadow-[0_4px_0_#3730a3]">
+            🔄 한 번 더 탐험하기
+          </button>
+          <button onclick="app.showScreen('lobby')"
+            class="btn-3d w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-700 font-title text-lg px-5 py-3 rounded-2xl shadow-[0_4px_0_#cbd5e1]">
+            🏠 테마·목표 바꾸기
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ==========================================
+       MODAL 1: MICRO-GOAL TREASURE CHEST REWARD POPUP
+       Condition 3 & 5: Immediate Reward & Sticker Collection
+       ========================================== -->
+  <div id="modalStickerReward" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border-4 border-amber-300 space-y-4 animate-[popIn_0.35s_ease-out]">
+      <div class="inline-block px-3 py-1 rounded-full bg-amber-100 text-amber-900 font-bold text-xs">
+        🎁 3문제 해결 보물상자 오픈!
+      </div>
+      <div id="rewardStickerEmoji" class="text-7xl py-2 animate-bounce">🦖</div>
+      <div>
+        <h3 id="rewardStickerName" class="text-2xl font-title text-slate-800">아기 티라노 스티커</h3>
+        <p id="rewardStickerDesc" class="text-sm text-slate-600 mt-1">3문제를 차근차근 해결해 새로운 도감 친구를 만났어요!</p>
+      </div>
+      <button onclick="app.closeStickerRewardModal()"
+        class="btn-3d w-full bg-gradient-to-r from-amber-400 to-orange-400 text-slate-900 font-title text-lg py-3 rounded-2xl shadow-[0_4px_0_#d97706]">
+        신난다! 계속하기 ✨
+      </button>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL 2: GROWTH RECORD & NUMBER BOND MATRIX
+       Condition 5: Visible Growth & Competence
+       ========================================== -->
+  <div id="modalGrowth" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 hidden items-center justify-center p-3 sm:p-5">
+    <div class="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl border-2 border-indigo-100 overflow-hidden">
+      <!-- Modal Header -->
+      <div class="p-4 sm:p-5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <span class="text-2xl">📖</span>
+          <div>
+            <h2 class="text-xl sm:text-2xl font-title">나의 덧셈 도감 & 성장 기록장</h2>
+            <p class="text-xs text-indigo-100">어제의 나보다 얼마나 자랐는지 한눈에 확인해 보세요!</p>
+          </div>
+        </div>
+        <button onclick="app.closeGrowthModal()"
+          class="w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white font-bold text-lg flex items-center justify-center">
+          ✕
+        </button>
+      </div>
+
+      <!-- Modal Scrollable Content -->
+      <div class="p-4 sm:p-6 overflow-y-auto space-y-6">
+
+        <!-- Growth Summary Stats -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-3 text-center">
+            <div class="text-xs font-bold text-indigo-800">누적 해결한 문제</div>
+            <div class="text-2xl font-title text-indigo-600 mt-1"><span id="statTotalSolved">0</span>개</div>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 text-center">
+            <div class="text-xs font-bold text-emerald-800">오늘 해결한 문제</div>
+            <div class="text-2xl font-title text-emerald-600 mt-1"><span id="statTodaySolved">0</span>개</div>
+          </div>
+          <div class="bg-amber-50 border border-amber-100 rounded-2xl p-3 text-center">
+            <div class="text-xs font-bold text-amber-800">열어본 보물상자</div>
+            <div class="text-2xl font-title text-amber-600 mt-1"><span id="statChestsOpened">0</span>번</div>
+          </div>
+          <div class="bg-pink-50 border border-pink-100 rounded-2xl p-3 text-center">
+            <div class="text-xs font-bold text-pink-800">정복한 덧셈 칸</div>
+            <div class="text-2xl font-title text-pink-600 mt-1"><span id="statMatrixConquered">0</span> / 81</div>
+          </div>
+        </div>
+
+        <!-- Tabs: Matrix vs Sticker Book -->
+        <div class="flex gap-2 border-b border-slate-200 pb-2">
+          <button id="tabBtnMatrix" onclick="app.switchGrowthTab('matrix')"
+            class="px-4 py-2 rounded-xl font-title text-sm sm:text-base bg-indigo-600 text-white">
+            🗺️ 1+1 ~ 9+9 덧셈 정복 지도
+          </button>
+          <button id="tabBtnStickers" onclick="app.switchGrowthTab('stickers')"
+            class="px-4 py-2 rounded-xl font-title text-sm sm:text-base bg-slate-100 text-slate-700 hover:bg-slate-200">
+            🌟 테마 캐릭터 스티커북
+          </button>
+        </div>
+
+        <!-- Tab 1: 9x9 Number Bond Conquest Matrix -->
+        <div id="growthTabMatrix" class="space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <p class="text-xs sm:text-sm text-slate-600">
+              내가 맞힌 덧셈 문제 칸이 알록달록 색칠돼요! 칸을 누르면 상세 기록을 볼 수 있어요.
+            </p>
+            <div id="matrixCellDetail" class="text-xs font-bold bg-indigo-50 text-indigo-800 px-3 py-1 rounded-full">
+              👆 표의 칸을 눌러 확인해 보세요!
+            </div>
+          </div>
+
+          <div class="overflow-x-auto pb-2">
+            <div id="numberBondMatrix" class="min-w-[460px] grid grid-cols-10 gap-1 text-center">
+              <!-- Populated by JS (Header row + 9x9 grid) -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Sticker Collection -->
+        <div id="growthTabStickers" class="hidden space-y-3">
+          <p class="text-xs sm:text-sm text-slate-600">
+            문제를 3개 풀 때마다 열리는 보물상자에서 모은 캐릭터 스티커예요! (총 16종)
+          </p>
+          <div id="stickerCollectionGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Reset Data Area (With Safe Custom Confirmation) -->
+        <div class="pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+          <span class="text-xs text-slate-400">💾 모든 성장 기록은 이 기기의 브라우저(LocalStorage)에 자동 저장됩니다.</span>
+          <div>
+            <button id="btnAskReset" onclick="app.toggleResetConfirm(true)"
+              class="text-xs font-bold text-rose-500 hover:text-rose-700 underline">
+              기록 초기화하기
+            </button>
+            <div id="resetConfirmBox" class="hidden items-center gap-2 bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl">
+              <span class="text-xs font-bold text-rose-800">정말 모든 기록을 처음부터 다시 시작할까요?</span>
+              <button onclick="app.resetAllData()" class="text-xs font-bold bg-rose-600 text-white px-2.5 py-1 rounded-lg">네, 초기화</button>
+              <button onclick="app.toggleResetConfirm(false)" class="text-xs font-bold bg-white text-slate-700 px-2.5 py-1 rounded-lg border">취소</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       APPLICATION LOGIC (Pure Vanilla JS)
+       ========================================== -->
+  <script>
+    /**
+     * Web Audio API Sound Engine (Zero external audio dependencies)
+     * Provides gentle, immediate auditory feedback for counting, grouping, and celebrating.
+     */
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+        // C Major / Pentatonic scale frequencies for joyful counting
+        this.scaleFreqs = [
+          261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25, 587.33, 659.25,
+          698.46, 783.99, 880.00, 987.77, 1046.50, 1174.66, 1318.51, 1396.91, 1567.98, 1760.00
+        ];
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playTone(freq, type = 'sine', duration = 0.18, delay = 0, gainVal = 0.16) {
+        if (this.muted) return;
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime + delay;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, now);
+
+          gain.gain.setValueAtTime(0.001, now);
+          gain.gain.linearRampToValueAtTime(gainVal, now + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + duration + 0.02);
+        } catch (e) {
+          // Ignore audio context restrictions if not yet interacted
+        }
+      }
+
+      playCountNote(index) {
+        const freq = this.scaleFreqs[Math.min(index, this.scaleFreqs.length - 1)] || 523.25;
+        this.playTone(freq, 'triangle', 0.22, 0, 0.2);
+      }
+
+      playClick() {
+        this.playTone(520, 'sine', 0.08, 0, 0.12);
+      }
+
+      playMakeTenSlide() {
+        // Ascending glissando effect for moving counters into Box 1
+        [392.00, 493.88, 587.33, 783.99].forEach((f, idx) => {
+          this.playTone(f, 'triangle', 0.16, idx * 0.06, 0.16);
+        });
+      }
+
+      playCorrect() {
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((f, idx) => {
+          this.playTone(f, 'triangle', 0.24, idx * 0.075, 0.2);
+        });
+      }
+
+      playGentleHint() {
+        // Warm, curious two-note chime (never harsh)
+        this.playTone(392.00, 'sine', 0.2, 0, 0.14);
+        this.playTone(440.00, 'sine', 0.28, 0.12, 0.14);
+      }
+
+      playChestFanfare() {
+        const chord = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+        chord.forEach((f, idx) => {
+          this.playTone(f, 'triangle', 0.35, idx * 0.08, 0.22);
+        });
+      }
+    }
+
+    /**
+     * Confetti Particle System for Immediate Visual Celebration
+     */
+    class ConfettiEngine {
+      constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.particles = [];
+        this.animId = null;
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+      }
+
+      resize() {
+        if (!this.canvas) return;
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+      }
+
+      burst(count = 60) {
+        const colors = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#a855f7'];
+        const cx = this.canvas.width / 2;
+        const cy = this.canvas.height * 0.35;
+
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 4 + Math.random() * 9;
+          this.particles.push({
+            x: cx,
+            y: cy,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 4,
+            size: 7 + Math.random() * 7,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rotation: Math.random() * 360,
+            vRot: (Math.random() - 0.5) * 12,
+            life: 1.0
+          });
+        }
+
+        if (!this.animId) this.loop();
+      }
+
+      loop() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.particles.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.25; // gravity
+          p.rotation += p.vRot;
+          p.life -= 0.014;
+
+          this.ctx.save();
+          this.ctx.translate(p.x, p.y);
+          this.ctx.rotate((p.rotation * Math.PI) / 180);
+          this.ctx.globalAlpha = Math.max(0, p.life);
+          this.ctx.fillStyle = p.color;
+          this.ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.65);
+          this.ctx.restore();
+        });
+
+        this.particles = this.particles.filter(p => p.life > 0 && p.y < this.canvas.height + 40);
+        if (this.particles.length > 0) {
+          this.animId = requestAnimationFrame(() => this.loop());
+        } else {
+          this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+          this.animId = null;
+        }
+      }
+    }
+
+    /**
+     * Theme Configurations (Condition 1: Autonomy)
+     */
+    const THEMES = {
+      space: {
+        id: 'space',
+        name: '우주 탐험',
+        iconMain: '🚀',
+        iconSub: '⭐',
+        bgFrom: '#eef2ff',
+        bgTo: '#f5f3ff',
+        desc: '로켓과 반짝이는 별로 우주를 탐험해요!'
+      },
+      dino: {
+        id: 'dino',
+        name: '공룡 숲',
+        iconMain: '🦖',
+        iconSub: '🥚',
+        bgFrom: '#ecfdf5',
+        bgTo: '#fefce8',
+        desc: '귀여운 아기 공룡과 공룡알을 세어 봐요!'
+      },
+      bakery: {
+        id: 'bakery',
+        name: '달콤 베이커리',
+        iconMain: '🧁',
+        iconSub: '🍓',
+        bgFrom: '#fff1f2',
+        bgTo: '#fffbeb',
+        desc: '달콤한 컵케이크와 상큼한 딸기를 모아요!'
+      },
+      ocean: {
+        id: 'ocean',
+        name: '바다 왕국',
+        iconMain: '🐬',
+        iconSub: '🐚',
+        bgFrom: '#ecfeff',
+        bgTo: '#eff6ff',
+        desc: '돌고래 친구와 예쁜 조개껍데기를 찾아봐요!'
+      }
+    };
+
+    /**
+     * 5 Goldilocks Difficulty Levels (Condition 2)
+     */
+    const LEVELS = [
+      { level: 1, title: '1단계', sub: '합이 5 이하', desc: '예: 2 + 3 = 5', badge: '🌱 1단계 · 합이 5 이하인 덧셈' },
+      { level: 2, title: '2단계', sub: '합이 10 이하', desc: '예: 6 + 3 = 9', badge: '🌿 2단계 · 합이 10 이하인 덧셈' },
+      { level: 3, title: '3단계', sub: '10 만들기 보수', desc: '예: 7 + ? = 10', badge: '🧩 3단계 · 10을 만드는 단짝 수 찾기' },
+      { level: 4, title: '4단계', sub: '10 만들어 더하기', desc: '예: 8 + 5 = 13', badge: '🔥 4단계 · 받아올림이 있는 한 자리 덧셈' },
+      { level: 5, title: '5단계', sub: '두 자리 + 한 자리', desc: '예: 12 + 5 = 17', badge: '👑 5단계 · 두 자리 수와 한 자리 수 덧셈' }
+    ];
+
+    /**
+     * 16 Collectible Stickers across the 4 Themes (Condition 5)
+     */
+    const STICKERS = [
+      { id: 'sp1', theme: 'space', emoji: '🚀', name: '초광속 탐사로켓', desc: '덧셈 우주를 향해 힘차게 날아올라요!' },
+      { id: 'sp2', theme: 'space', emoji: '👨‍🚀', name: '우주비행사 대장', desc: '어떤 어려운 문제도 침착하게 해결해요.' },
+      { id: 'sp3', theme: 'space', emoji: '🪐', name: '무지개 고리 토성', desc: '10개씩 묶어 아름다운 고리를 만들어요.' },
+      { id: 'sp4', theme: 'space', emoji: '🛸', name: '반짝이 UFO 친구', desc: '외계인 친구도 함께 숫자를 세어요!' },
+
+      { id: 'dn1', theme: 'dino', emoji: '🦖', name: '씩씩한 티라노', desc: '큰 숫자를 만나도 용기 있게 도전해요!' },
+      { id: 'dn2', theme: 'dino', emoji: '🦕', name: '목이 긴 브라키오', desc: '높은 단계까지 한눈에 내려다봐요.' },
+      { id: 'dn3', theme: 'dino', emoji: '🥚', name: '신비한 황금 공룡알', desc: '차근차근 문제를 풀면 알이 깨어나요.' },
+      { id: 'dn4', theme: 'dino', emoji: '🌋', name: '에너지 화산섬', desc: '몰입 에너지가 펑펑 솟아나는 섬이에요!' },
+
+      { id: 'bk1', theme: 'bakery', emoji: '🧁', name: '구름 크림 컵케이크', desc: '부드럽고 달콤하게 문제를 해결해요.' },
+      { id: 'bk2', theme: 'bakery', emoji: '🍓', name: '왕관 쓴 설향 딸기', desc: '상자 속 10개를 상큼하게 채워 줘요!' },
+      { id: 'bk3', theme: 'bakery', emoji: '🍩', name: '초코 스프링클 도넛', desc: '동그란 10의 보수를 완벽히 찾았어요.' },
+      { id: 'bk4', theme: 'bakery', emoji: '🎂', name: '축하 3단 케이크', desc: '목표를 끝까지 해낸 나에게 주는 선물!' },
+
+      { id: 'oc1', theme: 'ocean', emoji: '🐬', name: '점프 대장 돌고래', desc: '10칸 상자 사이를 폴짝 뛰어넘어요!' },
+      { id: 'oc2', theme: 'ocean', emoji: '🐚', name: '진주 품은 소라', desc: '보물상자 속 반짝이는 지혜를 모았어요.' },
+      { id: 'oc3', theme: 'ocean', emoji: '🐙', name: '팔이 8개 문어 박사', desc: '8 + 2 = 10을 가장 좋아하는 박사님!' },
+      { id: 'oc4', theme: 'ocean', emoji: '🐳', name: '무지개 분수 고래', desc: '깊은 바다처럼 깊은 집중력을 발휘했어요!' }
+    ];
+
+    const STORAGE_KEY = 'flowMathPlayground_v1';
+
+    /**
+     * Main Flow Math Playground Controller
+     */
+    const app = {
+      sound: new SoundEngine(),
+      confetti: null,
+
+      // User & Session State
+      state: {
+        theme: 'space',
+        goalCount: 5,         // 5, 10, or 0 (infinite)
+        pacingMode: 'relaxed', // 'relaxed' | 'speed'
+        level: 2,             // 1 ~ 5
+        autoFlow: true,       // Goldilocks adaptive engine
+
+        // Current Active Session
+        sessionSolved: 0,
+        sessionStickersEarned: 0,
+        microProgress: 0,     // 0, 1, 2 -> at 3 opens chest
+        consecutiveSmooth: 0, // For Auto-Flow level up
+        consecutiveStruggle: 0, // For Auto-Flow level down
+        flowZoneStatus: 'optimal', // 'optimal' | 'rising' | 'scaffolding'
+
+        // Current Problem State
+        currentProblem: null,
+        isGroupedTen: false,
+        attemptsOnCurrent: 0,
+        usedMakeTenHelper: false,
+        tappedCellsCount: 0,
+        problemSolved: false,
+        speedTimerId: null,
+        speedBonusPercent: 100
+      },
+
+      // Persistent Growth Data (LocalStorage)
+      growth: {
+        totalSolved: 0,
+        todaySolved: 0,
+        lastDate: '',
+        chestsOpened: 0,
+        matrix: {},       // key: "a+b", value: count solved
+        stickers: []      // array of unlocked sticker IDs
+      },
+
+      init() {
+        this.confetti = new ConfettiEngine('confettiCanvas');
+        this.loadGrowthData();
+        this.applyThemeVisuals();
+        this.renderLobbySelectors();
+        this.updateHeaderStats();
+        this.updateFlowBadgeUI();
+      },
+
+      /* ==========================================
+         LOCAL STORAGE & GROWTH PERSISTENCE
+         ========================================== */
+      loadGrowthData() {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            this.growth = {
+              totalSolved: parsed.totalSolved || 0,
+              todaySolved: parsed.lastDate === todayStr ? (parsed.todaySolved || 0) : 0,
+              lastDate: todayStr,
+              chestsOpened: parsed.chestsOpened || 0,
+              matrix: parsed.matrix || {},
+              stickers: Array.isArray(parsed.stickers) ? parsed.stickers : []
+            };
+            if (parsed.lastTheme && THEMES[parsed.lastTheme]) {
+              this.state.theme = parsed.lastTheme;
+            }
+            if (parsed.lastLevel >= 1 && parsed.lastLevel <= 5) {
+              this.state.level = parsed.lastLevel;
+            }
+          } else {
+            this.growth.lastDate = todayStr;
+          }
+        } catch (e) {
+          this.growth.lastDate = todayStr;
+        }
+      },
+
+      saveGrowthData() {
+        try {
+          const payload = {
+            ...this.growth,
+            lastTheme: this.state.theme,
+            lastLevel: this.state.level
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+        } catch (e) {
+          // Ignore storage quota errors in restricted environments
+        }
+        this.updateHeaderStats();
+      },
+
+      updateHeaderStats() {
+        document.getElementById('headerTotalSolved').textContent = this.growth.totalSolved;
+        document.getElementById('lobbySolvedCount').textContent = this.growth.totalSolved;
+        document.getElementById('lobbyStickerCount').textContent = `${this.growth.stickers.length}/${STICKERS.length}`;
+      },
+
+      /* ==========================================
+         CONDITION 1: AUTONOMY LOBBY RENDERING
+         ========================================== */
+      applyThemeVisuals() {
+        const t = THEMES[this.state.theme] || THEMES.space;
+        document.documentElement.style.setProperty('--bg-from', t.bgFrom);
+        document.documentElement.style.setProperty('--bg-to', t.bgTo);
+        document.getElementById('headerThemeIcon').textContent = t.iconMain;
+        document.getElementById('startBtnEmoji').textContent = t.iconMain;
+        const coach = document.getElementById('feedbackCoachAvatar');
+        if (coach) coach.textContent = t.iconMain;
+      },
+
+      renderLobbySelectors() {
+        // 1. Themes
+        const themeGrid = document.getElementById('themeSelectorGrid');
+        themeGrid.innerHTML = Object.values(THEMES).map(t => {
+          const active = this.state.theme === t.id;
+          return `
+            <button onclick="app.selectTheme('${t.id}')"
+              class="btn-3d text-left p-3.5 rounded-2xl border-2 transition-all flex flex-col justify-between ${
+                active
+                  ? 'bg-indigo-50/90 border-indigo-500 shadow-[0_4px_0_#6366f1]'
+                  : 'bg-slate-50 hover:bg-slate-100 border-slate-200 shadow-[0_3px_0_#cbd5e1]'
+              }">
+              <div class="flex items-center justify-between">
+                <span class="text-2xl sm:text-3xl">${t.iconMain}${t.iconSub}</span>
+                ${active ? '<span class="text-xs font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full">선택됨</span>' : ''}
+              </div>
+              <div class="mt-2">
+                <div class="font-title text-base sm:text-lg text-slate-800">${t.name}</div>
+                <div class="text-xs text-slate-500 leading-snug">${t.desc}</div>
+              </div>
+            </button>
+          `;
+        }).join('');
+
+        // 2. Daily Goals
+        const goals = [
+          { count: 5, label: '가볍게 5문제', icon: '🌱', desc: '부담 없이 상쾌하게!' },
+          { count: 10, label: '도전 10문제', icon: '🌟', desc: '스티커 3개 획득 도전!' },
+          { count: 0, label: '자유 탐험', icon: '♾️', desc: '원할 때까지 무제한!' }
+        ];
+        const goalGrid = document.getElementById('goalSelectorGrid');
+        goalGrid.innerHTML = goals.map(g => {
+          const active = this.state.goalCount === g.count;
+          return `
+            <button onclick="app.selectGoal(${g.count})"
+              class="btn-3d p-3 rounded-2xl border-2 text-center transition-all ${
+                active
+                  ? 'bg-amber-50 border-amber-500 shadow-[0_4px_0_#f59e0b]'
+                  : 'bg-slate-50 hover:bg-slate-100 border-slate-200 shadow-[0_3px_0_#cbd5e1]'
+              }">
+              <div class="text-2xl">${g.icon}</div>
+              <div class="font-title text-sm sm:text-base text-slate-800 mt-1">${g.label}</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">${g.desc}</div>
+            </button>
+          `;
+        }).join('');
+
+        // 3. Pacing Mode
+        const modes = [
+          { id: 'relaxed', label: '천천히 생각하기', icon: '🐢', desc: '타이머 없이 내 속도대로 편안하게 풀어요' },
+          { id: 'speed', label: '스피드 챌린지', icon: '⚡', desc: '빠르게 풀면 보너스 별🌟을 추가로 받아요' }
+        ];
+        const modeGrid = document.getElementById('modeSelectorGrid');
+        modeGrid.innerHTML = modes.map(m => {
+          const active = this.state.pacingMode === m.id;
+          return `
+            <button onclick="app.selectPacingMode('${m.id}')"
+              class="btn-3d p-3 rounded-2xl border-2 text-left transition-all ${
+                active
+                  ? 'bg-emerald-50 border-emerald-500 shadow-[0_4px_0_#10b981]'
+                  : 'bg-slate-50 hover:bg-slate-100 border-slate-200 shadow-[0_3px_0_#cbd5e1]'
+              }">
+              <div class="flex items-center justify-between">
+                <span class="text-2xl">${m.icon}</span>
+                ${active ? '<span class="text-[11px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">ON</span>' : ''}
+              </div>
+              <div class="font-title text-sm sm:text-base text-slate-800 mt-1">${m.label}</div>
+              <div class="text-[11px] text-slate-500 mt-0.5 leading-snug">${m.desc}</div>
+            </button>
+          `;
+        }).join('');
+
+        // 4. Difficulty Levels
+        const levelGrid = document.getElementById('levelSelectorGrid');
+        levelGrid.innerHTML = LEVELS.map(lv => {
+          const active = this.state.level === lv.level;
+          return `
+            <button onclick="app.selectLevel(${lv.level})"
+              class="btn-3d p-3 rounded-2xl border-2 text-left transition-all ${
+                active
+                  ? 'bg-purple-50 border-purple-500 shadow-[0_4px_0_#9333ea]'
+                  : 'bg-slate-50 hover:bg-slate-100 border-slate-200 shadow-[0_3px_0_#cbd5e1]'
+              }">
+              <div class="flex items-center justify-between">
+                <span class="font-title text-base text-purple-900">${lv.title}</span>
+                ${active ? '<span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>' : ''}
+              </div>
+              <div class="font-bold text-xs text-slate-800 mt-1">${lv.sub}</div>
+              <div class="text-[11px] text-slate-500 mt-0.5">${lv.desc}</div>
+            </button>
+          `;
+        }).join('');
+
+        document.getElementById('chkAutoFlowLobby').checked = this.state.autoFlow;
+      },
+
+      selectTheme(themeId) {
+        this.sound.playClick();
+        this.state.theme = themeId;
+        this.applyThemeVisuals();
+        this.renderLobbySelectors();
+        this.saveGrowthData();
+      },
+
+      selectGoal(count) {
+        this.sound.playClick();
+        this.state.goalCount = count;
+        this.renderLobbySelectors();
+      },
+
+      selectPacingMode(modeId) {
+        this.sound.playClick();
+        this.state.pacingMode = modeId;
+        this.renderLobbySelectors();
+      },
+
+      selectLevel(lv) {
+        this.sound.playClick();
+        this.state.level = lv;
+        this.renderLobbySelectors();
+        this.saveGrowthData();
+      },
+
+      toggleAutoFlow(enabled) {
+        this.sound.playClick();
+        this.state.autoFlow = enabled;
+        document.getElementById('chkAutoFlowLobby').checked = enabled;
+        this.updateInGameAutoFlowButton();
+      },
+
+      updateInGameAutoFlowButton() {
+        const btn = document.getElementById('btnInGameAutoFlow');
+        if (!btn) return;
+        if (this.state.autoFlow) {
+          btn.className = 'text-xs font-bold px-2.5 py-1.5 rounded-xl border bg-emerald-50 border-emerald-300 text-emerald-800 flex items-center gap-1';
+          btn.innerHTML = '<span>🤖 자동밸런스 ON</span>';
+        } else {
+          btn.className = 'text-xs font-bold px-2.5 py-1.5 rounded-xl border bg-slate-100 border-slate-300 text-slate-600 flex items-center gap-1';
+          btn.innerHTML = '<span>🔒 단계 고정 모드</span>';
+        }
+      },
+
+      toggleSound() {
+        this.sound.muted = !this.sound.muted;
+        const btn = document.getElementById('btnSoundToggle');
+        btn.textContent = this.sound.muted ? '🔇' : '🔊';
+        if (!this.sound.muted) this.sound.playClick();
+      },
+
+      showScreen(screenName) {
+        this.stopSpeedTimer();
+        document.getElementById('screenLobby').classList.add('hidden');
+        document.getElementById('screenGame').classList.add('hidden');
+        document.getElementById('screenComplete').classList.add('hidden');
+
+        if (screenName === 'lobby') {
+          this.renderLobbySelectors();
+          document.getElementById('screenLobby').classList.remove('hidden');
+        } else if (screenName === 'game') {
+          document.getElementById('screenGame').classList.remove('hidden');
+        } else if (screenName === 'complete') {
+          document.getElementById('screenComplete').classList.remove('hidden');
+        }
+      },
+
+      /* ==========================================
+         CONDITION 2: ADAPTIVE DIFFICULTY ENGINE
+         (Goldilocks Balance & Problem Generator)
+         ========================================== */
+      startGameSession() {
+        this.sound.playClick();
+        this.state.sessionSolved = 0;
+        this.state.sessionStickersEarned = 0;
+        this.state.microProgress = 0;
+        this.state.consecutiveSmooth = 0;
+        this.state.consecutiveStruggle = 0;
+        this.state.flowZoneStatus = 'optimal';
+
+        this.updateMicroGoalUI();
+        this.updateInGameAutoFlowButton();
+        this.showScreen('game');
+        this.generateNextProblem();
+      },
+
+      changeLevelManual(delta) {
+        this.sound.playClick();
+        const nextLv = Math.max(1, Math.min(5, this.state.level + delta));
+        if (nextLv !== this.state.level) {
+          this.state.level = nextLv;
+          this.state.consecutiveSmooth = 0;
+          this.state.consecutiveStruggle = 0;
+          this.saveGrowthData();
+          this.generateNextProblem();
+        }
+      },
+
+      updateFlowBadgeUI(customMessage = null) {
+        const badge = document.getElementById('flowStatusBadge');
+        const emojiEl = document.getElementById('flowBadgeEmoji');
+        const textEl = document.getElementById('flowBadgeText');
+        if (!badge) return;
+
+        if (this.state.flowZoneStatus === 'rising') {
+          badge.className = 'hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-800 text-xs sm:text-sm font-bold';
+          emojiEl.textContent = '🚀';
+          textEl.textContent = customMessage || '실력 쑥쑥! 한 단계 높여 도전 중';
+        } else if (this.state.flowZoneStatus === 'scaffolding') {
+          badge.className = 'hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs sm:text-sm font-bold';
+          emojiEl.textContent = '🌱';
+          textEl.textContent = customMessage || '자신감 충전! 편안한 다지기 구간';
+        } else {
+          badge.className = 'hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-bold';
+          emojiEl.textContent = '🌊';
+          textEl.textContent = customMessage || '황금 몰입 구간 (적정 난이도)';
+        }
+      },
+
+      generateProblemForLevel(level) {
+        let a = 1, b = 1, answer = 2, type = 'standard';
+
+        if (level === 1) {
+          // Sum <= 5 (e.g., 1+1 to 4+1, 2+3)
+          const sum = 2 + Math.floor(Math.random() * 4); // 2..5
+          a = 1 + Math.floor(Math.random() * (sum - 1));
+          b = sum - a;
+          answer = sum;
+        } else if (level === 2) {
+          // Sum 6..10
+          const sum = 6 + Math.floor(Math.random() * 5); // 6..10
+          a = 1 + Math.floor(Math.random() * (sum - 1));
+          b = sum - a;
+          answer = sum;
+        } else if (level === 3) {
+          // Missing addend to make 10: a + [ ? ] = 10
+          type = 'missing10';
+          a = 1 + Math.floor(Math.random() * 9); // 1..9
+          b = 10 - a;
+          answer = b;
+        } else if (level === 4) {
+          // Bridging 10 single-digit addition: a in 6..9, b in 2..9 such that a + b >= 11
+          a = 6 + Math.floor(Math.random() * 4); // 6..9
+          const minB = 11 - a;
+          b = minB + Math.floor(Math.random() * (9 - minB + 1));
+          answer = a + b;
+        } else {
+          // Level 5: Two-digit (10..14) + single-digit (2..8) <= 20
+          a = 10 + Math.floor(Math.random() * 5); // 10..14
+          const maxB = 20 - a;
+          b = 2 + Math.floor(Math.random() * (maxB - 1));
+          answer = a + b;
+        }
+
+        // Generate 4 plausible choices around the answer
+        const choiceSet = new Set([answer]);
+        const offsets = [-2, -1, 1, 2, 3, -3];
+        for (const off of offsets) {
+          if (choiceSet.size >= 4) break;
+          const candidate = answer + off;
+          if (candidate >= 1 && candidate <= 22) {
+            choiceSet.add(candidate);
+          }
+        }
+        while (choiceSet.size < 4) {
+          choiceSet.add(Math.max(1, answer + choiceSet.size));
+        }
+
+        const choices = Array.from(choiceSet).sort((x, y) => x - y);
+        return { level, type, a, b, sum: a + b, answer, choices };
+      },
+
+      generateNextProblem() {
+        this.stopSpeedTimer();
+        // Avoid repeating the exact same (a,b) back-to-back
+        let nextProb = this.generateProblemForLevel(this.state.level);
+        if (this.state.currentProblem && nextProb.a === this.state.currentProblem.a && nextProb.b === this.state.currentProblem.b) {
+          nextProb = this.generateProblemForLevel(this.state.level);
+        }
+
+        this.state.currentProblem = nextProb;
+        this.state.isGroupedTen = false;
+        this.state.attemptsOnCurrent = 0;
+        this.state.usedMakeTenHelper = false;
+        this.state.tappedCellsCount = 0;
+        this.state.problemSolved = false;
+
+        this.renderGameWorkspace();
+        if (this.state.pacingMode === 'speed') {
+          this.startSpeedTimer();
+        }
+      },
+
+      /* ==========================================
+         CONDITION 3: VISUAL TEN-FRAME & WORKSPACE UI
+         ========================================== */
+      renderGameWorkspace() {
+        const prob = this.state.currentProblem;
+        const lvMeta = LEVELS[prob.level - 1];
+        const theme = THEMES[this.state.theme];
+
+        // Header & Session Progress
+        document.getElementById('gameCurrentLevelLabel').textContent = `${lvMeta.title} (${lvMeta.sub})`;
+        document.getElementById('problemCategoryBadge').textContent = lvMeta.badge;
+
+        if (this.state.goalCount === 0) {
+          document.getElementById('sessionGoalTitle').textContent = '자유 탐험 모드';
+          document.getElementById('sessionProgressText').textContent = `${this.state.sessionSolved}문제 해결`;
+        } else {
+          document.getElementById('sessionGoalTitle').textContent = '오늘의 목표';
+          document.getElementById('sessionProgressText').textContent = `${this.state.sessionSolved} / ${this.state.goalCount} 문제`;
+        }
+
+        // Speed Bonus Bar Visibility
+        const speedBar = document.getElementById('speedBonusContainer');
+        if (this.state.pacingMode === 'speed') {
+          speedBar.classList.remove('hidden');
+        } else {
+          speedBar.classList.add('hidden');
+        }
+
+        // Make-10 Helper Button Setup
+        const btnMakeTen = document.getElementById('btnMakeTen');
+        const btnMakeTenLabel = document.getElementById('btnMakeTenLabel');
+        if (prob.type === 'missing10') {
+          btnMakeTen.classList.remove('hidden');
+          btnMakeTenLabel.textContent = '빈칸 채워 보기';
+        } else if (prob.a < 10 && prob.a + prob.b > 10) {
+          btnMakeTen.classList.remove('hidden');
+          btnMakeTenLabel.textContent = '10 묶어 보기';
+        } else if (prob.a < 10 && prob.a + prob.b <= 10) {
+          btnMakeTen.classList.remove('hidden');
+          btnMakeTenLabel.textContent = '한 상자에 합쳐 보기';
+        } else {
+          btnMakeTen.classList.add('hidden');
+        }
+
+        // Equation Rendering
+        this.renderEquation(false);
+
+        // Render Ten-Frame Manipulative
+        this.renderTenFrames(false);
+
+        // Reset Coach Feedback Banner
+        const feedbackBanner = document.getElementById('feedbackBanner');
+        feedbackBanner.className = 'rounded-2xl p-3.5 sm:p-4 border-2 border-indigo-100 bg-indigo-50/70 flex items-center gap-3.5 transition-all';
+        document.getElementById('feedbackCoachAvatar').textContent = theme.iconMain;
+        document.getElementById('btnNextProblem').classList.add('hidden');
+
+        if (prob.type === 'missing10') {
+          document.getElementById('feedbackTitle').textContent = `${prob.a}에 몇 개를 더 채우면 10칸 상자가 꽉 찰까요?`;
+          document.getElementById('feedbackSubtitle').textContent = '첫 번째 상자의 반짝이는 빈칸을 손가락으로 톡톡 눌러 세어 보세요!';
+        } else {
+          document.getElementById('feedbackTitle').textContent = '상자 속 아이템을 살펴보고 정답 숫자 버튼을 눌러 보세요!';
+          document.getElementById('feedbackSubtitle').textContent = '아이템을 직접 눌러 세어 보거나 [✨ 10 묶어 보기] 버튼을 써도 좋아요.';
+        }
+
+        // Render Answer Choice Buttons
+        this.renderAnswerButtons();
+      },
+
+      renderEquation(showAnswer = false) {
+        const prob = this.state.currentProblem;
+        const container = document.getElementById('equationContainer');
+        const transformHint = document.getElementById('equationTransformHint');
+
+        if (prob.type === 'missing10') {
+          const boxContent = showAnswer ? prob.answer : '?';
+          const boxStyle = showAnswer
+            ? 'bg-emerald-500 text-white border-emerald-600 scale-105'
+            : 'bg-amber-100 text-amber-800 border-amber-400 animate-pulse';
+          container.innerHTML = `
+            <span class="font-title text-4xl sm:text-5xl text-indigo-700">${prob.a}</span>
+            <span class="font-title text-3xl sm:text-4xl text-slate-400">+</span>
+            <span class="font-title text-4xl sm:text-5xl px-5 py-1.5 rounded-2xl border-4 transition-all ${boxStyle}">${boxContent}</span>
+            <span class="font-title text-3xl sm:text-4xl text-slate-400">=</span>
+            <span class="font-title text-4xl sm:text-5xl text-slate-800">10</span>
+          `;
+        } else {
+          const boxContent = showAnswer ? prob.answer : '?';
+          const boxStyle = showAnswer
+            ? 'bg-emerald-500 text-white border-emerald-600 scale-105'
+            : 'bg-indigo-100 text-indigo-800 border-indigo-300';
+          container.innerHTML = `
+            <span class="font-title text-4xl sm:text-5xl text-indigo-700">${prob.a}</span>
+            <span class="font-title text-3xl sm:text-4xl text-slate-400">+</span>
+            <span class="font-title text-4xl sm:text-5xl text-pink-600">${prob.b}</span>
+            <span class="font-title text-3xl sm:text-4xl text-slate-400">=</span>
+            <span class="font-title text-4xl sm:text-5xl px-5 py-1.5 rounded-2xl border-4 transition-all ${boxStyle}">${boxContent}</span>
+          `;
+        }
+
+        // Show Make-10 transformation equation if grouped
+        if (this.state.isGroupedTen && prob.type === 'standard') {
+          transformHint.classList.remove('opacity-0');
+          if (prob.a + prob.b > 10 && prob.a < 10) {
+            const rem = (prob.a + prob.b) - 10;
+            transformHint.textContent = `✨ 10으로 묶어 생각하기: ${prob.a} + ${prob.b} ➔ 10 + ${rem} = ${showAnswer ? prob.sum : '?'}`;
+          } else {
+            transformHint.textContent = `✨ 한 상자에 모두 모였어요! 총 몇 개인지 세어 볼까요?`;
+          }
+        } else if (this.state.isGroupedTen && prob.type === 'missing10') {
+          transformHint.classList.remove('opacity-0');
+          transformHint.textContent = `✨ 빈칸에 들어간 아이템이 모두 몇 개인지 세어 보세요!`;
+        } else {
+          transformHint.classList.add('opacity-0');
+        }
+      },
+
+      renderTenFrames(grouped = false) {
+        const prob = this.state.currentProblem;
+        const theme = THEMES[this.state.theme];
+        const grid1 = document.getElementById('tenFrameGrid1');
+        const grid2 = document.getElementById('tenFrameGrid2');
+        const box2Wrapper = document.getElementById('tenFrameBox2Wrapper');
+        const btnReset = document.getElementById('btnResetTenFrame');
+
+        btnReset.classList.toggle('hidden', !grouped);
+
+        let box1Cells = [];
+        let box2Cells = [];
+
+        if (prob.type === 'missing10') {
+          // Box 1 has `a` primary icons, and `10 - a` empty slots (or filled if grouped)
+          for (let i = 0; i < 10; i++) {
+            if (i < prob.a) {
+              box1Cells.push({ state: 'primary', icon: theme.iconMain, countIndex: i + 1 });
+            } else if (grouped) {
+              box1Cells.push({ state: 'moved', icon: theme.iconSub, countIndex: i - prob.a + 1 });
+            } else {
+              box1Cells.push({ state: 'empty-target', icon: '', countIndex: i - prob.a + 1 });
+            }
+          }
+          for (let i = 0; i < 10; i++) {
+            box2Cells.push({ state: 'empty', icon: '' });
+          }
+          document.getElementById('box1CountBadge').textContent = grouped ? `10개 (빈칸 ${prob.b}개 채움!)` : `${prob.a}개 + 빈칸 ?개`;
+          document.getElementById('box2CountBadge').textContent = `보조 상자`;
+          box2Wrapper.classList.add('opacity-50');
+        } else {
+          box2Wrapper.classList.remove('opacity-50');
+
+          if (prob.a >= 10) {
+            // Level 5 (e.g., 12 + 5): Box 1 has 10 primary, Box 2 has (a-10) primary + b secondary
+            for (let i = 0; i < 10; i++) {
+              box1Cells.push({ state: 'primary', icon: theme.iconMain, countIndex: i + 1 });
+            }
+            const extraA = prob.a - 10;
+            for (let i = 0; i < 10; i++) {
+              if (i < extraA) {
+                box2Cells.push({ state: 'primary', icon: theme.iconMain, countIndex: 10 + i + 1 });
+              } else if (i < extraA + prob.b) {
+                box2Cells.push({ state: 'secondary', icon: theme.iconSub, countIndex: 10 + i + 1 });
+              } else {
+                box2Cells.push({ state: 'empty', icon: '' });
+              }
+            }
+            document.getElementById('box1CountBadge').textContent = `10개 꽉 참!`;
+            document.getElementById('box2CountBadge').textContent = `${extraA}개 + ${prob.b}개`;
+          } else if (!grouped) {
+            // Ungrouped: Box 1 shows `a` items, Box 2 shows `b` items
+            for (let i = 0; i < 10; i++) {
+              if (i < prob.a) {
+                box1Cells.push({ state: 'primary', icon: theme.iconMain, countIndex: i + 1 });
+              } else {
+                box1Cells.push({ state: 'empty', icon: '' });
+              }
+            }
+            for (let i = 0; i < 10; i++) {
+              if (i < prob.b) {
+                box2Cells.push({ state: 'secondary', icon: theme.iconSub, countIndex: prob.a + i + 1 });
+              } else {
+                box2Cells.push({ state: 'empty', icon: '' });
+              }
+            }
+            document.getElementById('box1CountBadge').textContent = `${prob.a}개`;
+            document.getElementById('box2CountBadge').textContent = `${prob.b}개`;
+          } else {
+            // Grouped (Make-10 applied!): Move `need = Math.min(10 - a, b)` items from Box 2 into Box 1
+            const need = Math.min(10 - prob.a, prob.b);
+            const remainB = prob.b - need;
+
+            for (let i = 0; i < 10; i++) {
+              if (i < prob.a) {
+                box1Cells.push({ state: 'primary', icon: theme.iconMain, countIndex: i + 1 });
+              } else if (i < prob.a + need) {
+                box1Cells.push({ state: 'moved', icon: theme.iconSub, countIndex: i + 1 });
+              } else {
+                box1Cells.push({ state: 'empty', icon: '' });
+              }
+            }
+
+            for (let i = 0; i < 10; i++) {
+              if (i < remainB) {
+                box2Cells.push({ state: 'secondary', icon: theme.iconSub, countIndex: 10 + i + 1 });
+              } else if (i < prob.b) {
+                box2Cells.push({ state: 'ghost', icon: theme.iconSub });
+              } else {
+                box2Cells.push({ state: 'empty', icon: '' });
+              }
+            }
+            document.getElementById('box1CountBadge').textContent = `${prob.a + need}개 ${prob.a + need === 10 ? '(10 완성!)' : ''}`;
+            document.getElementById('box2CountBadge').textContent = `${remainB}개 남음`;
+          }
+        }
+
+        grid1.innerHTML = box1Cells.map((c, idx) => this.renderTenFrameCellHTML(c, 1, idx)).join('');
+        grid2.innerHTML = box2Cells.map((c, idx) => this.renderTenFrameCellHTML(c, 2, idx)).join('');
+      },
+
+      renderTenFrameCellHTML(cell, boxNum, idx) {
+        if (cell.state === 'primary') {
+          return `
+            <button onclick="app.tapTenFrameCell(this, ${cell.countIndex})"
+              class="ten-cell rounded-xl bg-indigo-50 border-2 border-indigo-200 hover:border-indigo-400 flex items-center justify-center text-2xl sm:text-3xl shadow-sm">
+              <span class="ten-cell-item">${cell.icon}</span>
+              <span class="cell-num-badge hidden absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-indigo-600 text-white font-title text-xs items-center justify-center shadow">${cell.countIndex}</span>
+            </button>
+          `;
+        } else if (cell.state === 'secondary') {
+          return `
+            <button onclick="app.tapTenFrameCell(this, ${cell.countIndex})"
+              class="ten-cell rounded-xl bg-pink-50 border-2 border-pink-200 hover:border-pink-400 flex items-center justify-center text-2xl sm:text-3xl shadow-sm">
+              <span class="ten-cell-item">${cell.icon}</span>
+              <span class="cell-num-badge hidden absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-pink-600 text-white font-title text-xs items-center justify-center shadow">${cell.countIndex}</span>
+            </button>
+          `;
+        } else if (cell.state === 'moved') {
+          return `
+            <button onclick="app.tapTenFrameCell(this, ${cell.countIndex})"
+              class="ten-cell rounded-xl bg-amber-100 border-2 border-amber-400 flex items-center justify-center text-2xl sm:text-3xl shadow-md">
+              <span class="ten-cell-moved">${cell.icon}</span>
+              <span class="cell-num-badge flex absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-600 text-white font-title text-xs items-center justify-center shadow">${cell.countIndex}</span>
+            </button>
+          `;
+        } else if (cell.state === 'ghost') {
+          return `
+            <div class="ten-cell rounded-xl bg-slate-50 border border-dashed border-slate-300 flex items-center justify-center text-xl">
+              <span class="ten-cell-ghost">${cell.icon}</span>
+            </div>
+          `;
+        } else if (cell.state === 'empty-target') {
+          return `
+            <button onclick="app.tapEmptyTargetCell(this, ${cell.countIndex})"
+              class="ten-cell empty-slot-pulse rounded-xl border-2 border-dashed border-amber-400 flex items-center justify-center text-sm font-title text-amber-800">
+              <span class="target-slot-label">?</span>
+            </button>
+          `;
+        } else {
+          return `
+            <div class="ten-cell rounded-xl bg-slate-100/70 border border-slate-200/80"></div>
+          `;
+        }
+      },
+
+      tapTenFrameCell(btnEl, countIndex) {
+        this.state.tappedCellsCount++;
+        this.sound.playCountNote(countIndex - 1);
+        const badge = btnEl.querySelector('.cell-num-badge');
+        if (badge) {
+          badge.classList.remove('hidden');
+          badge.classList.add('flex');
+        }
+        btnEl.classList.add('scale-105', 'ring-2', 'ring-indigo-400');
+        setTimeout(() => btnEl.classList.remove('scale-105'), 220);
+      },
+
+      tapEmptyTargetCell(btnEl, slotNumber) {
+        this.state.tappedCellsCount++;
+        const theme = THEMES[this.state.theme];
+        this.sound.playCountNote(slotNumber - 1);
+        const label = btnEl.querySelector('.target-slot-label');
+        if (label) {
+          label.innerHTML = `<span class="text-xl">${theme.iconSub}</span><span class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-amber-500 text-white text-xs flex items-center justify-center">${slotNumber}</span>`;
+        }
+      },
+
+      animateMakeTen() {
+        this.sound.playMakeTenSlide();
+        this.state.isGroupedTen = true;
+        this.state.usedMakeTenHelper = true;
+        this.renderTenFrames(true);
+        this.renderEquation(this.state.problemSolved);
+      },
+
+      resetTenFrameGrouping() {
+        this.sound.playClick();
+        this.state.isGroupedTen = false;
+        this.renderTenFrames(false);
+        this.renderEquation(this.state.problemSolved);
+      },
+
+      renderAnswerButtons() {
+        const prob = this.state.currentProblem;
+        const grid = document.getElementById('answerChoicesGrid');
+        grid.innerHTML = prob.choices.map(val => `
+          <button id="ansBtn_${val}" onclick="app.submitAnswer(${val}, this)"
+            class="btn-3d bg-white hover:bg-indigo-50 text-slate-800 border-2 border-indigo-200 hover:border-indigo-400 font-title text-3xl sm:text-4xl py-4 sm:py-5 rounded-3xl shadow-[0_5px_0_#c7d2fe] flex items-center justify-center gap-2">
+            <span>${val}</span>
+          </button>
+        `).join('');
+      },
+
+      /* ==========================================
+         CONDITION 4: SAFE FAILURE & PROCESS PRAISE
+         ========================================== */
+      submitAnswer(selectedVal, btnEl) {
+        if (this.state.problemSolved) return;
+        const prob = this.state.currentProblem;
+        this.state.attemptsOnCurrent++;
+
+        if (selectedVal === prob.answer) {
+          this.handleCorrectAnswer(btnEl);
+        } else {
+          this.handleSafeRetry(selectedVal, btnEl);
+        }
+      },
+
+      handleSafeRetry(wrongVal, btnEl) {
+        // 1. Gentle curiosity sound (never a harsh buzzer)
+        this.sound.playGentleHint();
+
+        // 2. Transform the clicked button into a soft thought-bubble indicator (No red X!)
+        btnEl.disabled = true;
+        btnEl.className = 'bg-amber-50/80 text-amber-800 border-2 border-dashed border-amber-300 font-title text-2xl py-4 sm:py-5 rounded-3xl flex flex-col items-center justify-center opacity-80';
+        btnEl.innerHTML = `<span>💭 ${wrongVal}</span><span class="text-xs font-sans font-bold text-amber-700 mt-0.5">다시 세어 볼까요?</span>`;
+
+        // 3. Automatically activate the visual Ten-Frame grouping helper so the child gets visual scaffolding
+        if (!this.state.isGroupedTen) {
+          this.state.isGroupedTen = true;
+          this.renderTenFrames(true);
+          this.renderEquation(false);
+        }
+
+        // 4. Warm, constructive coach message (Condition 4 exact requirement)
+        const banner = document.getElementById('feedbackBanner');
+        banner.className = 'rounded-2xl p-3.5 sm:p-4 border-2 border-amber-300 bg-amber-50 flex items-center gap-3.5 transition-all';
+        document.getElementById('feedbackTitle').textContent =
+          `아하! ${wrongVal}을(를) 생각했군요! 상자 속 아이템을 10개씩 먼저 묶어서 다시 세어 볼까요?`;
+
+        if (prob.type === 'missing10') {
+          document.getElementById('feedbackSubtitle').textContent =
+            `첫 번째 상자에 새로 채워진 ${THEMES[this.state.theme].iconSub} 아이템이 몇 개인지 번호를 보며 확인해 보세요!`;
+        } else if (prob.a + prob.b > 10 && prob.a < 10) {
+          const rem = (prob.a + prob.b) - 10;
+          document.getElementById('feedbackSubtitle').textContent =
+            `첫 번째 상자가 10개가 되었고, 두 번째 상자에 ${rem}개가 남았어요! 10과 ${rem}을 더하면 얼마일까요?`;
+        } else {
+          document.getElementById('feedbackSubtitle').textContent =
+            `상자 속 아이템을 왼쪽부터 하나씩 톡톡 눌러 숫자를 세어 보면 금방 찾을 수 있어요!`;
+        }
+      },
+
+      handleCorrectAnswer(btnEl) {
+        this.state.problemSolved = true;
+        this.stopSpeedTimer();
+        this.sound.playCorrect();
+        this.confetti.burst(45);
+
+        const prob = this.state.currentProblem;
+
+        // Highlight winning button
+        btnEl.className = 'bg-emerald-500 text-white border-2 border-emerald-600 font-title text-3xl sm:text-4xl py-4 sm:py-5 rounded-3xl shadow-[0_5px_0_#047857] flex items-center justify-center gap-2 scale-105';
+        btnEl.innerHTML = `<span>🌟 ${prob.answer}</span>`;
+
+        // Show grouped 10-frame state & solved equation so they visually reinforce the structure
+        this.state.isGroupedTen = true;
+        this.renderTenFrames(true);
+        this.renderEquation(true);
+
+        // Generate Process-Oriented Praise (Condition 4)
+        const praise = this.getProcessPraiseMessage(prob);
+        const banner = document.getElementById('feedbackBanner');
+        banner.className = 'rounded-2xl p-3.5 sm:p-4 border-2 border-emerald-300 bg-emerald-50 flex flex-wrap sm:flex-nowrap items-center gap-3.5 transition-all';
+        document.getElementById('feedbackTitle').textContent = praise.title;
+        document.getElementById('feedbackSubtitle').textContent = praise.sub;
+        document.getElementById('btnNextProblem').classList.remove('hidden');
+
+        // Record Growth & Matrix Conquest (Condition 5)
+        this.recordProblemConquest(prob);
+
+        // Update Auto-Flow Goldilocks Engine (Condition 2)
+        this.evaluateAutoFlowAdjustment();
+
+        // Advance Session & Micro-Goal Treasure Chest (Condition 3)
+        this.state.sessionSolved++;
+        this.state.microProgress++;
+        this.updateMicroGoalUI();
+
+        if (this.state.microProgress >= 3) {
+          this.state.microProgress = 0;
+          setTimeout(() => this.triggerTreasureChestReward(), 550);
+        }
+      },
+
+      getProcessPraiseMessage(prob) {
+        // Context-sensitive process praise instead of generic "천재야!"
+        if (this.state.attemptsOnCurrent > 1) {
+          return {
+            title: '방금 헷갈렸던 문제를 그림 블록으로 끝까지 확인해서 스스로 해냈어요! 👏',
+            sub: '실수를 힌트로 삼아 다시 도전하는 태도가 뇌를 가장 튼튼하게 자라게 해요!'
+          };
+        }
+        if (prob.type === 'missing10') {
+          return {
+            title: `10칸 상자의 빈자리를 떠올려 ${prob.a}의 단짝 수 ${prob.answer}을(를) 정확히 찾아냈네요! 🧩`,
+            sub: `${prob.a} + ${prob.answer} = 10! 10을 만드는 단짝 수를 알면 모든 덧셈이 쉬워져요.`
+          };
+        }
+        if (this.state.usedMakeTenHelper || (prob.a < 10 && prob.a + prob.b > 10)) {
+          const rem = (prob.a + prob.b) - 10;
+          return {
+            title: `10을 먼저 채우고 나머지(${rem})를 더하는 멋진 전략을 썼군요! ✨`,
+            sub: `${prob.a} + ${prob.b}를 10 + ${rem} = ${prob.sum}(으)로 바꾸어 생각하니 훨씬 명쾌하죠!`
+          };
+        }
+        if (this.state.tappedCellsCount > 0) {
+          return {
+            title: '아이템을 하나씩 차근차근 세어 보며 스스로 정확한 답을 찾아냈네요! 🎵',
+            sub: '눈과 손, 소리로 직접 확인하며 세어 본 경험이 탄탄한 수 감각을 만들어 줘요.'
+          };
+        }
+        if (this.state.pacingMode === 'speed' && this.state.speedBonusPercent >= 50) {
+          return {
+            title: '머릿속으로 10프레임 묶음을 빠르게 떠올려 해결했어요! ⚡ 보너스 별 획득!',
+            sub: '수의 구조를 그림처럼 떠올리는 힘이 점점 더 단단해지고 있어요.'
+          };
+        }
+        return {
+          title: '두 수의 모으기 과정을 정확하게 떠올려 스스로 해결했어요! 🌟',
+          sub: `${prob.a}개와 ${prob.b}개가 만나 모두 ${prob.sum}개가 되는 원리를 완벽히 이해했네요.`
+        };
+      },
+
+      evaluateAutoFlowAdjustment() {
+        if (!this.state.autoFlow) return;
+
+        if (this.state.attemptsOnCurrent === 1 && !this.state.usedMakeTenHelper) {
+          this.state.consecutiveSmooth++;
+          this.state.consecutiveStruggle = 0;
+
+          if (this.state.consecutiveSmooth >= 3 && this.state.level < 5) {
+            this.state.level++;
+            this.state.consecutiveSmooth = 0;
+            this.state.flowZoneStatus = 'rising';
+            this.updateFlowBadgeUI(`🚀 실력 상승! ${this.state.level}단계로 자동 레벨업`);
+            this.saveGrowthData();
+          } else {
+            this.state.flowZoneStatus = 'optimal';
+            this.updateFlowBadgeUI();
+          }
+        } else if (this.state.attemptsOnCurrent >= 2) {
+          this.state.consecutiveStruggle++;
+          this.state.consecutiveSmooth = 0;
+
+          if (this.state.consecutiveStruggle >= 2 && this.state.level > 1) {
+            this.state.level--;
+            this.state.consecutiveStruggle = 0;
+            this.state.flowZoneStatus = 'scaffolding';
+            this.updateFlowBadgeUI(`🌱 자신감 충전! ${this.state.level}단계에서 탄탄히 다져요`);
+            this.saveGrowthData();
+          }
+        }
+      },
+
+      nextProblem() {
+        this.sound.playClick();
+        // Check if daily goal reached (unless infinite mode)
+        if (this.state.goalCount > 0 && this.state.sessionSolved >= this.state.goalCount) {
+          this.finishSession();
+        } else {
+          this.generateNextProblem();
+        }
+      },
+
+      finishSession() {
+        this.stopSpeedTimer();
+        this.sound.playChestFanfare();
+        this.confetti.burst(90);
+
+        const theme = THEMES[this.state.theme];
+        document.getElementById('completeHeroEmoji').textContent = theme.iconMain;
+        document.getElementById('summarySolved').textContent = `${this.state.sessionSolved}문제`;
+        document.getElementById('summaryLevel').textContent = `${this.state.level}단계`;
+        document.getElementById('summaryStickers').textContent = `+${this.state.sessionStickersEarned}개`;
+
+        this.showScreen('complete');
+      },
+
+      /* ==========================================
+         SPEED CHALLENGE NON-STRESSFUL BONUS BAR
+         ========================================== */
+      startSpeedTimer() {
+        this.stopSpeedTimer();
+        this.state.speedBonusPercent = 100;
+        const bar = document.getElementById('speedBonusBar');
+        const status = document.getElementById('speedBonusStatus');
+        if (bar) bar.style.width = '100%';
+        if (status) status.textContent = '🌟 보너스 가능!';
+
+        this.state.speedTimerId = setInterval(() => {
+          if (this.state.problemSolved) {
+            this.stopSpeedTimer();
+            return;
+          }
+          this.state.speedBonusPercent = Math.max(0, this.state.speedBonusPercent - 2);
+          if (bar) bar.style.width = `${this.state.speedBonusPercent}%`;
+          if (this.state.speedBonusPercent === 0 && status) {
+            status.textContent = '🐢 천천히 풀어도 괜찮아요!';
+          }
+        }, 200);
+      },
+
+      stopSpeedTimer() {
+        if (this.state.speedTimerId) {
+          clearInterval(this.state.speedTimerId);
+          this.state.speedTimerId = null;
+        }
+      },
+
+      /* ==========================================
+         MICRO-GOALS & STICKER REWARD SYSTEM
+         ========================================== */
+      updateMicroGoalUI() {
+        const dotsContainer = document.getElementById('microGoalDots');
+        const chestIcon = document.getElementById('microChestIcon');
+        const prog = this.state.microProgress;
+
+        dotsContainer.innerHTML = [0, 1, 2].map(i => {
+          const filled = i < prog;
+          return `<span class="w-3.5 h-3.5 rounded-full transition-all inline-block ${
+            filled ? 'bg-amber-500 border-amber-600 scale-110' : 'bg-amber-100 border-amber-300'
+          } border"></span>`;
+        }).join('');
+
+        if (prog === 2) {
+          chestIcon.classList.add('chest-ready');
+        } else {
+          chestIcon.classList.remove('chest-ready');
+        }
+      },
+
+      triggerTreasureChestReward() {
+        this.sound.playChestFanfare();
+        this.confetti.burst(70);
+
+        this.growth.chestsOpened++;
+        this.state.sessionStickersEarned++;
+
+        // Prefer unlocking a sticker from current theme first, then any locked sticker
+        const lockedThemeStickers = STICKERS.filter(s => s.theme === this.state.theme && !this.growth.stickers.includes(s.id));
+        const lockedAllStickers = STICKERS.filter(s => !this.growth.stickers.includes(s.id));
+
+        let chosenSticker = null;
+        if (lockedThemeStickers.length > 0) {
+          chosenSticker = lockedThemeStickers[0];
+        } else if (lockedAllStickers.length > 0) {
+          chosenSticker = lockedAllStickers[Math.floor(Math.random() * lockedAllStickers.length)];
+        } else {
+          chosenSticker = STICKERS[Math.floor(Math.random() * STICKERS.length)];
+        }
+
+        if (!this.growth.stickers.includes(chosenSticker.id)) {
+          this.growth.stickers.push(chosenSticker.id);
+          document.getElementById('newStickerDot').classList.remove('hidden');
+        }
+        this.saveGrowthData();
+
+        document.getElementById('rewardStickerEmoji').textContent = chosenSticker.emoji;
+        document.getElementById('rewardStickerName').textContent = chosenSticker.name;
+        document.getElementById('rewardStickerDesc').textContent = chosenSticker.desc;
+
+        const modal = document.getElementById('modalStickerReward');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        this.updateMicroGoalUI();
+      },
+
+      closeStickerRewardModal() {
+        this.sound.playClick();
+        const modal = document.getElementById('modalStickerReward');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      },
+
+      /* ==========================================
+         CONDITION 5: VISIBLE GROWTH & MATRIX MODAL
+         ========================================== */
+      recordProblemConquest(prob) {
+        this.growth.totalSolved++;
+        this.growth.todaySolved++;
+
+        // Map to 1..9 x 1..9 matrix if single-digit addends
+        const aKey = Math.min(9, Math.max(1, prob.a > 9 ? prob.a - 10 || 9 : prob.a));
+        const bKey = Math.min(9, Math.max(1, prob.b));
+        const key = `${aKey}+${bKey}`;
+        this.growth.matrix[key] = (this.growth.matrix[key] || 0) + 1;
+
+        this.saveGrowthData();
+      },
+
+      openGrowthModal() {
+        this.sound.playClick();
+        document.getElementById('newStickerDot').classList.add('hidden');
+        this.renderGrowthModalContent();
+        const modal = document.getElementById('modalGrowth');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      },
+
+      closeGrowthModal() {
+        this.sound.playClick();
+        this.toggleResetConfirm(false);
+        const modal = document.getElementById('modalGrowth');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      },
+
+      switchGrowthTab(tab) {
+        this.sound.playClick();
+        const isMatrix = tab === 'matrix';
+        document.getElementById('growthTabMatrix').classList.toggle('hidden', !isMatrix);
+        document.getElementById('growthTabStickers').classList.toggle('hidden', isMatrix);
+
+        document.getElementById('tabBtnMatrix').className = isMatrix
+          ? 'px-4 py-2 rounded-xl font-title text-sm sm:text-base bg-indigo-600 text-white'
+          : 'px-4 py-2 rounded-xl font-title text-sm sm:text-base bg-slate-100 text-slate-700 hover:bg-slate-200';
+        document.getElementById('tabBtnStickers').className = !isMatrix
+          ? 'px-4 py-2 rounded-xl font-title text-sm sm:text-base bg-indigo-600 text-white'
+          : 'px-4 py-2 rounded-xl font-title text-sm sm:text-base bg-slate-100 text-slate-700 hover:bg-slate-200';
+      },
+
+      renderGrowthModalContent() {
+        const conqueredCount = Object.keys(this.growth.matrix).filter(k => this.growth.matrix[k] > 0).length;
+        document.getElementById('statTotalSolved').textContent = this.growth.totalSolved;
+        document.getElementById('statTodaySolved').textContent = this.growth.todaySolved;
+        document.getElementById('statChestsOpened').textContent = this.growth.chestsOpened;
+        document.getElementById('statMatrixConquered').textContent = conqueredCount;
+
+        // Render 9x9 Number Bond Matrix
+        const matrixEl = document.getElementById('numberBondMatrix');
+        let html = `<div class="bg-indigo-100 text-indigo-900 font-title text-xs py-2 rounded-lg flex items-center justify-center">+</div>`;
+        for (let col = 1; col <= 9; col++) {
+          html += `<div class="bg-indigo-50 text-indigo-800 font-title text-xs py-2 rounded-lg flex items-center justify-center">${col}</div>`;
+        }
+
+        for (let row = 1; row <= 9; row++) {
+          html += `<div class="bg-pink-50 text-pink-800 font-title text-xs py-2 rounded-lg flex items-center justify-center">${row}</div>`;
+          for (let col = 1; col <= 9; col++) {
+            const key = `${row}+${col}`;
+            const count = this.growth.matrix[key] || 0;
+            const sum = row + col;
+
+            let cellClass = 'bg-slate-50 text-slate-400 border border-slate-200 hover:bg-slate-100';
+            let badge = '';
+            if (count === 1) {
+              cellClass = 'bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold shadow-sm';
+              badge = '🌱';
+            } else if (count === 2) {
+              cellClass = 'bg-amber-100 text-amber-900 border border-amber-300 font-bold shadow-sm';
+              badge = '⭐';
+            } else if (count >= 3) {
+              cellClass = 'bg-gradient-to-br from-indigo-500 to-purple-500 text-white font-bold shadow';
+              badge = '👑';
+            }
+
+            html += `
+              <button onclick="app.inspectMatrixCell(${row}, ${col}, ${count})"
+                class="rounded-lg py-1.5 px-1 text-[11px] transition-transform hover:scale-105 flex flex-col items-center justify-center ${cellClass}">
+                <span>${row}+${col}</span>
+                <span class="text-[10px] opacity-90">${count > 0 ? `${badge}${sum}` : `=${sum}`}</span>
+              </button>
+            `;
+          }
+        }
+        matrixEl.innerHTML = html;
+
+        // Render Sticker Book
+        const stickerGrid = document.getElementById('stickerCollectionGrid');
+        stickerGrid.innerHTML = STICKERS.map(st => {
+          const unlocked = this.growth.stickers.includes(st.id);
+          return `
+            <div class="p-3.5 rounded-2xl border-2 text-center transition-all ${
+              unlocked
+                ? 'bg-gradient-to-b from-amber-50 to-white border-amber-300 shadow-sm'
+                : 'bg-slate-50 border-dashed border-slate-200 opacity-60'
+            }">
+              <div class="text-4xl ${unlocked ? '' : 'grayscale opacity-40'}">${unlocked ? st.emoji : '❓'}</div>
+              <div class="font-title text-sm text-slate-800 mt-2">${unlocked ? st.name : '비밀 친구'}</div>
+              <div class="text-[11px] text-slate-500 mt-0.5 leading-snug">${unlocked ? st.desc : '보물상자를 열어 모아 보세요!'}</div>
+            </div>
+          `;
+        }).join('');
+      },
+
+      inspectMatrixCell(r, c, count) {
+        this.sound.playCountNote((r + c) - 2);
+        const detailEl = document.getElementById('matrixCellDetail');
+        if (count > 0) {
+          detailEl.textContent = `🎉 ${r} + ${c} = ${r + c} (지금까지 ${count}번 스스로 해결했어요!)`;
+        } else {
+          detailEl.textContent = `🔍 ${r} + ${c} = ${r + c} (아직 만나지 않은 문제예요. 곧 정복해 봐요!)`;
+        }
+      },
+
+      toggleResetConfirm(show) {
+        document.getElementById('btnAskReset').classList.toggle('hidden', show);
+        const box = document.getElementById('resetConfirmBox');
+        box.classList.toggle('hidden', !show);
+        box.classList.toggle('inline-flex', show);
+      },
+
+      resetAllData() {
+        this.sound.playClick();
+        localStorage.removeItem(STORAGE_KEY);
+        this.growth = {
+          totalSolved: 0,
+          todaySolved: 0,
+          lastDate: new Date().toISOString().slice(0, 10),
+          chestsOpened: 0,
+          matrix: {},
+          stickers: []
+        };
+        this.updateHeaderStats();
+        this.renderLobbySelectors();
+        this.renderGrowthModalContent();
+        this.toggleResetConfirm(false);
+      }
+    };
+
+    window.onload = function () {
+      app.init();
+    };
+  </script>
+</body>
+</html>
